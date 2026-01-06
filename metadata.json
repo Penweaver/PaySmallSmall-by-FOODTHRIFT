@@ -1,0 +1,7 @@
+{
+  "name": "PaySmallSmall - FoodThrift",
+  "description": "A production-grade fintech solution for contributory foodstuff and livestock plans, featuring secure payments, real-time tracking, and administrative controls.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
