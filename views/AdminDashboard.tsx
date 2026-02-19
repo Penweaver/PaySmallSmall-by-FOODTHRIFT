@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from 'recharts';
 import { MOCK_PLANS } from '../constants';
 import { FoodPlan, PlanFrequency } from '../types';
@@ -21,6 +21,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ addToast }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [plans, setPlans] = useState<FoodPlan[]>(() => {
     const saved = localStorage.getItem('ft_plans');
     return saved ? JSON.parse(saved) : MOCK_PLANS;
@@ -41,14 +42,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ addToast }) => {
   const [isAiLoading, setIsAiLoading] = useState(true);
   const [aiBriefing, setAiBriefing] = useState("");
   
-  const [newPlan, setNewPlan] = useState<Partial<FoodPlan>>({
+  const initialPlanState: Partial<FoodPlan> = {
     name: '', 
     category: 'Foodstuff', 
     amount: 0, 
     frequency: PlanFrequency.WEEKLY, 
     durationInWeeks: 12, 
-    imageUrl: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&q=80&w=400'
-  });
+    imageUrl: ''
+  };
+
+  const [newPlan, setNewPlan] = useState<Partial<FoodPlan>>(initialPlanState);
 
   useEffect(() => {
     const fetchBriefing = async () => {
@@ -60,10 +63,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ addToast }) => {
     fetchBriefing();
   }, [plans]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        addToast("Image too large (max 2MB)", "ERROR");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewPlan(prev => ({ ...prev, imageUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddPlan = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPlan.name || !newPlan.amount) {
-      addToast("Please fill required fields", "ERROR");
+    if (!newPlan.name || !newPlan.amount || !newPlan.imageUrl) {
+      addToast(newPlan.imageUrl ? "Please fill required fields" : "Please upload a plan image", "ERROR");
       return;
     }
     const p: FoodPlan = { 
@@ -73,9 +91,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ addToast }) => {
     setPlans([p, ...plans]);
     setShowAddPlan(false);
     addToast(`Plan "${p.name}" successfully added`);
-    setNewPlan({
-      name: '', category: 'Foodstuff', amount: 0, frequency: PlanFrequency.WEEKLY, durationInWeeks: 12, imageUrl: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&q=80&w=400'
-    });
+    setNewPlan(initialPlanState);
   };
 
   const handleArchive = (plan: FoodPlan) => {
@@ -83,6 +99,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ addToast }) => {
     setDeactivatedPlans([{ ...plan, deactivationReason: 'Rotation' }, ...deactivatedPlans]);
     setSelectedPlan(null);
     addToast(`Plan "${plan.name}" Deactivated`, "INFO");
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -237,18 +257,58 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ addToast }) => {
                </button>
             </div>
             <form onSubmit={handleAddPlan} className="space-y-4">
-              <input required placeholder="Plan Name" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-green-500" onChange={e => setNewPlan({...newPlan, name: e.target.value})} />
+              {/* Image Upload Area */}
+              <div 
+                onClick={triggerFileUpload}
+                className={`relative group cursor-pointer border-2 border-dashed rounded-2xl transition-all h-32 flex flex-col items-center justify-center overflow-hidden bg-gray-50 ${newPlan.imageUrl ? 'border-green-500' : 'border-gray-200 hover:border-gray-400'}`}
+              >
+                {newPlan.imageUrl ? (
+                  <>
+                    <img src={newPlan.imageUrl} className="w-full h-full object-cover" alt="Preview" />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <p className="text-[9px] font-bold text-white uppercase tracking-widest bg-black/40 px-3 py-1.5 rounded-lg">Change Image</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center p-4">
+                    <svg className="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Click to upload image</p>
+                  </div>
+                )}
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={handleFileChange} 
+                />
+              </div>
+
+              <input required value={newPlan.name} placeholder="Plan Name" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-green-500" onChange={e => setNewPlan({...newPlan, name: e.target.value})} />
+              
               <div className="grid grid-cols-2 gap-4">
-                <input required type="number" placeholder="Cost (₦)" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-green-500" onChange={e => setNewPlan({...newPlan, amount: Number(e.target.value)})} />
-                <select className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-green-500" onChange={e => setNewPlan({...newPlan, category: e.target.value as any})}>
+                <input required value={newPlan.amount || ''} type="number" placeholder="Cost (₦)" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-green-500" onChange={e => setNewPlan({...newPlan, amount: Number(e.target.value)})} />
+                <select value={newPlan.category} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-green-500" onChange={e => setNewPlan({...newPlan, category: e.target.value as any})}>
                   <option>Foodstuff</option>
                   <option>Livestock</option>
                   <option>Meat</option>
                   <option>Bundle</option>
+                  <option>Oils & Spices</option>
+                  <option>Sharing</option>
                 </select>
               </div>
-              <input required placeholder="Image URL" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-green-500" onChange={e => setNewPlan({...newPlan, imageUrl: e.target.value})} />
-              <button className="w-full py-4 bg-gray-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider mt-2">Confirm Plan</button>
+
+              <div className="grid grid-cols-2 gap-4">
+                <select value={newPlan.frequency} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-green-500" onChange={e => setNewPlan({...newPlan, frequency: e.target.value as any})}>
+                  <option value={PlanFrequency.WEEKLY}>Weekly</option>
+                  <option value={PlanFrequency.MONTHLY}>Monthly</option>
+                </select>
+                <input required value={newPlan.durationInWeeks || ''} type="number" placeholder="Duration (Weeks)" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-green-500" onChange={e => setNewPlan({...newPlan, durationInWeeks: Number(e.target.value)})} />
+              </div>
+
+              <button className="w-full py-4 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest mt-2 shadow-xl shadow-gray-200 active:scale-95 transition-all">Confirm & Publish Plan</button>
             </form>
           </div>
         </div>
@@ -256,26 +316,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ addToast }) => {
 
       {selectedPlan && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-[32px] w-full max-w-sm overflow-hidden shadow-2xl p-8 text-center animate-scaleIn">
-            <button onClick={() => setSelectedPlan(null)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900">×</button>
+          <div className="bg-white rounded-[32px] w-full max-w-sm overflow-hidden shadow-2xl p-8 text-center animate-scaleIn relative">
+            <button onClick={() => setSelectedPlan(null)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-900">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
             <div className="mb-6">
-              <img src={selectedPlan.imageUrl} className="w-20 h-20 rounded-2xl mx-auto mb-4 object-cover border-2 border-white shadow-md" alt="" />
+              <img src={selectedPlan.imageUrl} className="w-24 h-24 rounded-2xl mx-auto mb-4 object-cover border-4 border-white shadow-xl" alt="" />
               <h3 className="text-lg font-bold text-gray-900">{selectedPlan.name}</h3>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedPlan.category}</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4 mb-8">
-               <div className="p-3 bg-gray-50 rounded-xl">
+               <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                  <p className="text-[8px] font-bold text-gray-400 uppercase">Subscribers</p>
                  <p className="text-lg font-bold text-gray-900">142</p>
                </div>
-               <div className="p-3 bg-gray-50 rounded-xl">
+               <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                  <p className="text-[8px] font-bold text-gray-400 uppercase">Total Saved</p>
                  <p className="text-lg font-bold text-green-600">₦710k</p>
                </div>
             </div>
 
-            <button onClick={() => handleArchive(selectedPlan)} className="w-full py-4 bg-red-50 text-red-600 rounded-xl text-[10px] font-bold uppercase border border-red-100 hover:bg-red-600 hover:text-white transition-all">Deactivate Plan</button>
+            <button onClick={() => handleArchive(selectedPlan)} className="w-full py-4 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase border border-red-100 hover:bg-red-600 hover:text-white transition-all shadow-sm">Deactivate Plan</button>
           </div>
         </div>
       )}
