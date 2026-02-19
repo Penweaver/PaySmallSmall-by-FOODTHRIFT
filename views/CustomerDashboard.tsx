@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MOCK_PLANS } from '../constants';
 import { Subscription, FoodPlan, User, LedgerTransaction } from '../types';
@@ -341,7 +340,7 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ user, onLogout, a
                 <div className="bg-yellow-50 border border-yellow-100 rounded-3xl p-8 text-center">
                   <div className="w-16 h-16 bg-yellow-400 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 17V7l6 10V7M8 11h8M8 13h8" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 18V7l10 11V7M5 10h14M5 14h14" />
                     </svg>
                   </div>
                   <h2 className="text-xl font-bold text-gray-900">Thrift Rewards</h2>
@@ -444,7 +443,7 @@ const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ user, onLogout, a
         <button onClick={() => setActiveView('REWARDS')} className={`flex flex-col items-center transition-all active:scale-90 ${activeView === 'REWARDS' ? 'text-green-600' : 'text-gray-400'}`}>
           <svg className="w-6 h-6" fill={activeView === 'REWARDS' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 15V9l6 6V9M8 11h8M8 13h8" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 18V7l10 11V7M5 10h14M5 14h14" />
           </svg>
           <span className="text-[8px] font-bold uppercase mt-1">Rewards</span>
         </button>
